@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import {useRouter} from "next/navigation";
-import { Bell, CalendarDays, ChevronDown, CircleDollarSign, Download, Eye, FilePlus2, Filter, History, LayoutDashboard, LogOut, Menu, MoreVertical, PackageOpen, Pencil, Plus, ReceiptText, Search, Settings, Shirt, Sparkles, TrendingUp, Trash2, Users, WalletCards, X } from "lucide-react";
+import { Bell, CalendarDays, ChevronDown, CircleDollarSign, Download, Eye, FilePlus2, Filter, History, LayoutDashboard, LogOut, Menu, MoreVertical, PackageOpen, Pencil, Plus, ReceiptText, Search, Shirt, Sparkles, TrendingUp, Trash2, Users, WalletCards, X } from "lucide-react";
 
 type Service = { name: string; icon: string; price: number; color: string };
 type ServiceItem = { name:string; icon:string; price:number };
@@ -54,7 +54,7 @@ const serviceItems: Record<string, ServiceItem[]> = {
     {name:"Single Blanket",icon:"🧶",price:150},{name:"Double Blanket",icon:"🧶",price:220},{name:"King Blanket",icon:"🧶",price:300},{name:"Woollen Blanket",icon:"🧶",price:260},{name:"Baby Blanket",icon:"🧶",price:100},
   ],
 };
-const nav = [["Dashboard", LayoutDashboard], ["Create Bill", FilePlus2], ["Invoices", ReceiptText], ["Customers", Users], ["Services", Shirt], ["Settings", Settings]] as const;
+const nav = [["Dashboard", LayoutDashboard], ["Create Bill", FilePlus2], ["Invoices", ReceiptText], ["Customers", Users], ["Services", Shirt]] as const;
 
 function Logo() { return <div className="brand"><div className="brand-mark"><span>◉</span></div><div><b>Fabric Wash</b><small>Fresh Clothes | Happy You</small></div></div>; }
 async function downloadInvoicePdf(invoice:InvoiceRecord){
