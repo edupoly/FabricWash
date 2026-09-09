@@ -1,0 +1,5 @@
+const encoder=new TextEncoder();
+function bytesToBase64(bytes:Uint8Array){let binary="";bytes.forEach(byte=>binary+=String.fromCharCode(byte));return btoa(binary).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"")}
+async function sign(value:string){const secret=process.env.AUTH_SECRET;if(!secret)throw new Error("AUTH_SECRET is not configured");const key=await crypto.subtle.importKey("raw",encoder.encode(secret),{name:"HMAC",hash:"SHA-256"},false,["sign"]);return bytesToBase64(new Uint8Array(await crypto.subtle.sign("HMAC",key,encoder.encode(value))))}
+export async function createSessionToken(){const payload=bytesToBase64(encoder.encode(JSON.stringify({role:"admin",expires:Date.now()+8*60*60*1000})));return `${payload}.${await sign(payload)}`}
+export async function verifySessionToken(token?:string){if(!token)return false;const [payload,signature]=token.split(".");if(!payload||!signature||await sign(payload)!==signature)return false;try{const normalized=payload.replace(/-/g,"+").replace(/_/g,"/");const data=JSON.parse(atob(normalized));return data.role==="admin"&&data.expires>Date.now()}catch{return false}}

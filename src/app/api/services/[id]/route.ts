@@ -1,0 +1,6 @@
+import { NextResponse } from "next/server";
+import { connectDB } from "@/lib/mongodb";
+import { LaundryService } from "@/models/Service";
+type Context={params:Promise<{id:string}>};
+export async function PUT(request:Request,{params}:Context){try{const {id}=await params;const body=await request.json();if(!body.name?.trim()||!Array.isArray(body.items)||!body.items.length)return NextResponse.json({error:"Service name and items are required"},{status:400});await connectDB();const service=await LaundryService.findByIdAndUpdate(id,{name:body.name,icon:body.icon,color:body.color,price:body.price||0,items:body.items},{new:true,runValidators:true});if(!service)return NextResponse.json({error:"Service not found"},{status:404});return NextResponse.json(service)}catch(error){return NextResponse.json({error:error instanceof Error?error.message:"Unable to update service"},{status:500})}}
+export async function DELETE(_:Request,{params}:Context){try{const {id}=await params;await connectDB();const service=await LaundryService.findByIdAndDelete(id);if(!service)return NextResponse.json({error:"Service not found"},{status:404});return NextResponse.json({success:true})}catch(error){return NextResponse.json({error:error instanceof Error?error.message:"Unable to delete service"},{status:500})}}

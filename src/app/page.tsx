@@ -1,69 +1,146 @@
-import Image from "next/image";
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import {useRouter} from "next/navigation";
+import { Bell, CalendarDays, ChevronDown, Download, Eye, FilePlus2, Filter, History, LayoutDashboard, LogOut, Menu, MoreVertical, PackageOpen, Pencil, Plus, ReceiptText, Search, Settings, Shirt, Sparkles, Trash2, Users, X } from "lucide-react";
+
+type Service = { name: string; icon: string; price: number; color: string };
+type ServiceItem = { name:string; icon:string; price:number };
+type ManagedService = Service & { _id?:string; items:ServiceItem[] };
+type Line = Service & { quantity: number };
+type InvoiceRecord = { _id?:string; invoiceNumber:string; customer:{name:string;phone:string;address?:string}; items:Line[]; total:number; paymentMethod:string; paymentStatus:"Paid"|"Pending"|"Cancelled"; createdAt:string };
+const demoInvoices:InvoiceRecord[] = [
+  {invoiceNumber:"FW000123",customer:{name:"Priya Sharma",phone:"+91 98765 43210"},items:[],total:360,paymentMethod:"UPI",paymentStatus:"Paid",createdAt:"2026-09-03T11:24:00"},
+  {invoiceNumber:"FW000122",customer:{name:"Rahul Mehta",phone:"+91 87654 32109"},items:[],total:1250,paymentMethod:"Cash",paymentStatus:"Paid",createdAt:"2026-09-02T16:18:00"},
+  {invoiceNumber:"FW000121",customer:{name:"Sneha Iyer",phone:"+91 91234 56789"},items:[],total:780,paymentMethod:"Card",paymentStatus:"Pending",createdAt:"2026-09-01T14:37:00"},
+  {invoiceNumber:"FW000120",customer:{name:"Vikram Singh",phone:"+91 99887 66554"},items:[],total:540,paymentMethod:"UPI",paymentStatus:"Paid",createdAt:"2026-08-31T13:12:00"},
+  {invoiceNumber:"FW000119",customer:{name:"Anjali Desai",phone:"+91 90909 10101"},items:[],total:1020,paymentMethod:"Cash",paymentStatus:"Paid",createdAt:"2026-08-30T17:26:00"},
+  {invoiceNumber:"FW000118",customer:{name:"Karthik Rao",phone:"+91 80808 90909"},items:[],total:680,paymentMethod:"Card",paymentStatus:"Cancelled",createdAt:"2026-08-29T15:45:00"},
+];
+
+const services: Service[] = [
+  { name: "Regular Wash", icon: "🧺", price: 80, color: "blue" }, { name: "Dry Cleaning", icon: "🤵", price: 180, color: "violet" },
+  { name: "Ironing", icon: "♨️", price: 20, color: "mint" }, { name: "Comforters", icon: "🛏️", price: 250, color: "sand" },
+  { name: "Curtains", icon: "🪟", price: 150, color: "rose" }, { name: "Shoes", icon: "👟", price: 220, color: "cyan" },
+  { name: "Women’s Dry Cleaning", icon: "👗", price: 200, color: "pink" }, { name: "Men’s Dry Cleaning", icon: "👔", price: 180, color: "sky" },
+  { name: "Blankets", icon: "🧶", price: 160, color: "lilac" },
+];
+const serviceItems: Record<string, ServiceItem[]> = {
+  "Regular Wash": [
+    {name:"Shirt / T-shirt",icon:"👕",price:35},{name:"Trouser / Jeans",icon:"👖",price:45},{name:"Kurta / Top",icon:"🥼",price:40},{name:"Saree",icon:"🥻",price:70},{name:"Bedsheet",icon:"🛏️",price:80},{name:"Towel",icon:"🧻",price:30},
+  ],
+  "Dry Cleaning": [
+    {name:"Blazer",icon:"🧥",price:220},{name:"2-Piece Suit",icon:"🤵",price:450},{name:"Silk Saree",icon:"🥻",price:280},{name:"Evening Gown",icon:"👗",price:350},{name:"Winter Coat",icon:"🧥",price:320},{name:"Silk Shirt",icon:"👔",price:160},
+  ],
+  "Ironing": [
+    {name:"Shirt / T-shirt",icon:"👕",price:15},{name:"Trouser / Jeans",icon:"👖",price:20},{name:"Kurta / Top",icon:"🥼",price:20},{name:"Saree",icon:"🥻",price:45},{name:"Bedsheet",icon:"🛏️",price:35},{name:"Dress",icon:"👗",price:35},
+  ],
+  "Comforters": [
+    {name:"Single Comforter",icon:"🛏️",price:220},{name:"Double Comforter",icon:"🛏️",price:320},{name:"King Comforter",icon:"🛏️",price:420},{name:"Duvet",icon:"🧺",price:280},
+  ],
+  "Curtains": [
+    {name:"Window Curtain",icon:"🪟",price:100},{name:"Door Curtain",icon:"🪟",price:150},{name:"Sheer Curtain",icon:"🪟",price:90},{name:"Blackout Curtain",icon:"🪟",price:190},
+  ],
+  "Shoes": [
+    {name:"Sneakers",icon:"👟",price:220},{name:"Formal Shoes",icon:"👞",price:240},{name:"Sports Shoes",icon:"👟",price:260},{name:"Boots",icon:"🥾",price:320},{name:"Sandals",icon:"🩴",price:160},
+  ],
+  "Women’s Dry Cleaning": [
+    {name:"Saree",icon:"🥻",price:220},{name:"Dress",icon:"👗",price:200},{name:"Gown",icon:"👗",price:350},{name:"Lehenga",icon:"🥻",price:480},{name:"Blouse",icon:"👚",price:120},{name:"Women’s Jacket",icon:"🧥",price:220},
+  ],
+  "Men’s Dry Cleaning": [
+    {name:"Blazer",icon:"🧥",price:220},{name:"2-Piece Suit",icon:"🤵",price:450},{name:"Formal Shirt",icon:"👔",price:140},{name:"Formal Trouser",icon:"👖",price:160},{name:"Kurta",icon:"🥼",price:170},{name:"Sherwani",icon:"🤵",price:500},
+  ],
+  "Blankets": [
+    {name:"Single Blanket",icon:"🧶",price:150},{name:"Double Blanket",icon:"🧶",price:220},{name:"King Blanket",icon:"🧶",price:300},{name:"Woollen Blanket",icon:"🧶",price:260},{name:"Baby Blanket",icon:"🧶",price:100},
+  ],
+};
+const nav = [["Dashboard", LayoutDashboard], ["Create Bill", FilePlus2], ["Invoices", ReceiptText], ["Customers", Users], ["Services", Shirt], ["Settings", Settings]] as const;
+
+function Logo() { return <div className="brand"><div className="brand-mark"><span>◉</span></div><div><b>Fabric Wash</b><small>Fresh Clothes | Happy You</small></div></div>; }
+async function downloadInvoicePdf(invoice:InvoiceRecord){
+  const {jsPDF}=await import("jspdf");const doc=new jsPDF({unit:"mm",format:"a4"});const left=16;const right=194;let y=18;
+  const line=()=>{doc.setDrawColor(213,228,239);doc.line(left,y,right,y);y+=6};
+  const ensureSpace=(height:number)=>{if(y+height>280){doc.addPage();y=18}};
+  doc.setTextColor(8,59,104);doc.setFont("helvetica","bold");doc.setFontSize(22);doc.text("Fabric Wash",left,y);doc.setFontSize(9);doc.setFont("helvetica","normal");doc.text("Fresh Clothes | Happy You",left,y+6);
+  doc.setFontSize(10);doc.setFont("helvetica","bold");doc.text(`Invoice No: ${invoice.invoiceNumber}`,right,y,{align:"right"});doc.setFont("helvetica","normal");doc.text(new Date(invoice.createdAt).toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"}),right,y+6,{align:"right"});y+=18;line();
+  doc.setFontSize(9);doc.setTextColor(65,86,104);doc.text("BILL TO",left,y);y+=6;doc.setTextColor(10,49,88);doc.setFont("helvetica","bold");doc.setFontSize(12);doc.text(invoice.customer.name,left,y);doc.setFont("helvetica","normal");doc.setFontSize(9);y+=5;doc.text(invoice.customer.phone,left,y);if(invoice.customer.address){y+=5;doc.text(invoice.customer.address,left,y)}y+=9;
+  doc.setFillColor(237,247,255);doc.rect(left,y,right-left,10,"F");doc.setFont("helvetica","bold");doc.text("Item",left+3,y+6.5);doc.text("Qty",145,y+6.5,{align:"center"});doc.text("Amount",right-3,y+6.5,{align:"right"});y+=10;
+  const groups=new Map<string,Line[]>();invoice.items.forEach(item=>{const service=item.name.includes(" · ")?item.name.split(" · ")[0]:"Services";groups.set(service,[...(groups.get(service)||[]),item])});
+  groups.forEach((items,service)=>{ensureSpace(14+items.length*10);doc.setFillColor(247,251,254);doc.rect(left,y,right-left,8,"F");doc.setTextColor(8,117,191);doc.setFont("helvetica","bold");doc.setFontSize(9);doc.text(service.toUpperCase(),left+3,y+5.5);doc.setTextColor(10,49,88);y+=8;items.forEach(item=>{const itemName=item.name.includes(" · ")?item.name.split(" · ").slice(1).join(" · "):item.name;doc.setFont("helvetica","normal");doc.text(itemName,left+3,y+6);doc.setFontSize(8);doc.setTextColor(100,123,145);doc.text(`INR ${item.price} each`,left+3,y+9.5);doc.setFontSize(9);doc.setTextColor(10,49,88);doc.text(String(item.quantity),145,y+6,{align:"center"});doc.setFont("helvetica","bold");doc.text(`INR ${(item.price*item.quantity).toLocaleString("en-IN")}`,right-3,y+6,{align:"right"});doc.setDrawColor(235,242,247);doc.line(left,y+11,right,y+11);y+=11})});
+  ensureSpace(42);y+=5;doc.setFont("helvetica","normal");doc.text("Subtotal",145,y);doc.text(`INR ${invoice.total.toLocaleString("en-IN")}.00`,right,y,{align:"right"});y+=7;doc.text("Discount",145,y);doc.text("INR 0.00",right,y,{align:"right"});y+=5;doc.setFillColor(234,246,255);doc.rect(137,y,right-137,12,"F");doc.setFont("helvetica","bold");doc.setFontSize(11);doc.text("Total",140,y+7.5);doc.setTextColor(8,117,191);doc.text(`INR ${invoice.total.toLocaleString("en-IN")}.00`,right-2,y+7.5,{align:"right"});y+=21;doc.setTextColor(10,49,88);doc.setFontSize(9);doc.text(`Payment: ${invoice.paymentMethod}  |  Status: ${invoice.paymentStatus}`,left,y);doc.setTextColor(8,117,191);doc.setFont("helvetica","bold");doc.text("Thank you for choosing Fabric Wash!",left,285);
+  doc.save(`${invoice.invoiceNumber.replace(/[^a-zA-Z0-9-_]/g,"")}.pdf`);
+}
 
 export default function Home() {
-  return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
-  );
+  const router=useRouter();
+  const [active, setActive] = useState("Create Bill"); const [mobileOpen, setMobileOpen] = useState(false); const [lines, setLines] = useState<Line[]>([]);
+  const [customer, setCustomer] = useState({ name: "", phone: "", address: "" }); const [payment, setPayment] = useState("Cash");
+  const [invoices, setInvoices] = useState<InvoiceRecord[]>(demoInvoices); const [notice,setNotice]=useState("");
+  const [catalog,setCatalog]=useState<ManagedService[]>(services.map(service=>({...service,items:serviceItems[service.name]})));
+  useEffect(()=>{fetch("/api/invoices").then(r=>r.ok?r.json():Promise.reject()).then(data=>{if(Array.isArray(data)&&data.length)setInvoices(data)}).catch(()=>undefined);fetch("/api/services").then(r=>r.ok?r.json():Promise.reject()).then(data=>{if(Array.isArray(data)&&data.length)setCatalog(current=>{const storedNames=new Set(data.map((service:ManagedService)=>service.name));return [...current.filter(service=>!storedNames.has(service.name)),...data]})}).catch(()=>undefined)},[]);
+  const total = useMemo(() => lines.reduce((sum, item) => sum + item.price * item.quantity, 0), [lines]);
+  return <main className="app-shell">
+    <header><button className="menu-button" onClick={() => setMobileOpen(true)} aria-label="Open menu"><Menu /></button><Logo /><div className="header-user"><Bell /><span className="avatar">A</span><span>Admin</span><ChevronDown size={15}/><button className="logout-button" onClick={async()=>{await fetch("/api/auth/logout",{method:"POST"});router.push("/login");router.refresh()}} aria-label="Log out"><LogOut/></button></div></header>
+    <aside className={mobileOpen ? "open" : ""}><div className="mobile-brand"><Logo /><button onClick={() => setMobileOpen(false)} aria-label="Close menu"><X /></button></div><nav>{nav.map(([label, Icon]) => <button key={label} className={active === label ? "active" : ""} onClick={() => { setActive(label); setMobileOpen(false); }}><Icon size={21}/><span>{label}</span></button>)}</nav><div className="sidebar-note"><Sparkles size={22}/><span>Clean Clothes<br/>Happy You</span></div></aside>
+    {mobileOpen && <button className="backdrop" onClick={() => setMobileOpen(false)} aria-label="Close menu"/>}
+    <section className="content">{notice&&<div className="notice">{notice}<button onClick={()=>setNotice("")}>×</button></div>}{active === "Create Bill" ? <CreateInvoice availableServices={catalog} customer={customer} setCustomer={setCustomer} lines={lines} setLines={setLines} total={total} payment={payment} setPayment={setPayment} onSaved={(record)=>{setInvoices(current=>[record,...current]);setNotice(`${record.invoiceNumber} created successfully.`)}}/> : active === "Invoices" ? <Invoices records={invoices} onCreate={()=>setActive("Create Bill")}/> : active === "Customers" ? <Customers records={invoices}/> : active === "Services" ? <ServicesAdmin catalog={catalog} setCatalog={setCatalog} notify={setNotice}/> : <ComingSoon active={active} onCreate={() => setActive("Create Bill")}/>}</section>
+  </main>;
 }
+
+function CreateInvoice({ availableServices, customer, setCustomer, lines, setLines, total, payment, setPayment, onSaved }: { availableServices:ManagedService[]; customer:{name:string;phone:string;address:string}; setCustomer:React.Dispatch<React.SetStateAction<{name:string;phone:string;address:string}>>; lines:Line[]; setLines:React.Dispatch<React.SetStateAction<Line[]>>; total:number; payment:string; setPayment:(s:string)=>void; onSaved:(r:InvoiceRecord)=>void }) {
+  const [activeService, setActiveService] = useState<Service | null>(null);
+  const [itemCounts, setItemCounts] = useState<Record<string, number>>({});
+  const [invoiceNumber, setInvoiceNumber] = useState("Draft");
+  const updateQty = (name: string, next: number) => setLines((items) => next <= 0 ? items.filter(i => i.name !== name) : items.map(i => i.name === name ? {...i, quantity: next} : i));
+  const groupedLines = useMemo(() => {
+    const groups = new Map<string, Line[]>();
+    lines.forEach(line => {
+      const serviceName = line.name.includes(" · ") ? line.name.split(" · ")[0] : line.name;
+      groups.set(serviceName, [...(groups.get(serviceName) || []), line]);
+    });
+    return Array.from(groups.entries());
+  }, [lines]);
+  const activeItems = activeService ? availableServices.find(service=>service.name===activeService.name)?.items || [] : [];
+  const selectedItemCount = Object.values(itemCounts).reduce((sum, count) => sum + count, 0);
+  const addSelectedItems = () => {
+    if (!activeService) return;
+    const selected: Line[] = activeItems.filter(item => (itemCounts[item.name] || 0) > 0).map(item => ({ name:`${activeService.name} · ${item.name}`, icon:item.icon, price:item.price, color:activeService.color, quantity:itemCounts[item.name] }));
+    setLines(current => { const next=[...current]; selected.forEach(item=>{const index=next.findIndex(line=>line.name===item.name);if(index>=0)next[index]={...next[index],quantity:next[index].quantity+item.quantity};else next.push(item)});return next });
+    setItemCounts({}); setActiveService(null);
+  };
+  const generate=async()=>{if(!customer.name.trim()||!customer.phone.trim()||!lines.length){alert("Please add customer name, phone number and at least one service.");return}const payload={customer,items:lines,total,paymentMethod:payment,paymentStatus:"Paid"};let record:InvoiceRecord;try{const response=await fetch("/api/invoices",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});if(!response.ok)throw new Error();record=await response.json()}catch{record={...payload,invoiceNumber:`FW${String(Date.now()).slice(-6)}`,createdAt:new Date().toISOString()} as InvoiceRecord}setInvoiceNumber(record.invoiceNumber);onSaved(record);await downloadInvoicePdf(record)};
+  return <><div className="page-heading"><div className="title-row"><div className="title-icon"><ReceiptText/></div><div><h1>Create Laundry Invoice</h1><p>Select a customer and choose services to generate a bill.</p></div></div><div className="top-actions"><button className="secondary" onClick={() => { setCustomer({name:"",phone:"",address:""}); setLines([]); setInvoiceNumber("Draft"); }}>Reset</button><button className="primary" onClick={generate}><ReceiptText size={18}/> Generate Invoice</button></div></div>
+    <div className="workspace"><div className="builder"><section className="card customer-card"><h2><Users/> Customer Details</h2><div className="form-grid"><label>Customer Name<input value={customer.name} onChange={e=>setCustomer({...customer,name:e.target.value})} placeholder="Enter customer name"/></label><label>Phone Number<input value={customer.phone} onChange={e=>setCustomer({...customer,phone:e.target.value})} placeholder="+91 98765 43210"/></label><label className="full">Address <small>(Optional)</small><input value={customer.address} onChange={e=>setCustomer({...customer,address:e.target.value})} placeholder="Enter address"/></label></div></section>
+      <section className="card services-card"><div className="section-heading"><PackageOpen/><div><h2>Select Laundry Services</h2><p>Choose the service(s) you want to add to the bill.</p></div></div><div className="service-grid">{availableServices.map(service => <button key={service._id || service.name} className={`service ${service.color}`} onClick={() => {setItemCounts({});setActiveService(service)}}><span className="service-icon">{service.icon}</span><span>{service.name}<small>Select items & count</small></span><Plus size={18}/></button>)}</div></section></div>
+      <aside className="invoice card"><div className="invoice-head"><Logo/><div><b>Invoice No: <span>{invoiceNumber}</span></b><small>Date: {new Date().toLocaleDateString("en-IN", {day:"2-digit",month:"short",year:"numeric"})}</small></div></div><div className="bill-to"><span>Bill To</span><b>{customer.name || "Customer name"}</b><small>{customer.phone || "Phone number"}</small><small>{customer.address || "Customer address"}</small></div>
+        <div className="invoice-table"><div className="table-head"><span>Item</span><span>Qty</span><span>Amount</span></div>{lines.length === 0 ? <div className="empty"><div>🧺</div><b>No services added yet</b><span>Select a service to add items to the bill.</span></div> : <div className="line-list">{groupedLines.map(([serviceName,items])=><section className="invoice-service-group" key={serviceName}><div className="invoice-service-title"><span>{availableServices.find(service=>service.name===serviceName)?.icon || "🧺"}</span><b>{serviceName}</b><small>{items.reduce((sum,item)=>sum+item.quantity,0)} items</small></div>{items.map(item=>{const itemName=item.name.includes(" · ")?item.name.split(" · ").slice(1).join(" · "):item.name;return <div className="line" key={item.name}><span>{itemName}<small>₹{item.price} each</small></span><span className="qty"><button onClick={()=>updateQty(item.name,item.quantity-1)}>−</button>{item.quantity}<button onClick={()=>updateQty(item.name,item.quantity+1)}>+</button></span><b>₹{item.price*item.quantity}</b></div>})}</section>)}</div>}<div className="totals"><span>Subtotal <b>₹{total.toLocaleString("en-IN")}.00</b></span><span>Discount <b>₹0.00</b></span><strong>Total Amount <b>₹{total.toLocaleString("en-IN")}.00</b></strong></div></div>
+        <div className="payment"><b>Payment Method</b><div>{["Cash","UPI","Card","Other"].map(method=><label key={method}><input type="radio" checked={payment===method} onChange={()=>setPayment(method)}/>{method}</label>)}</div></div><div className="thank-you">♡ <span><b>Thank you for choosing Fabric Wash!</b><small>We look forward to serving you again.</small></span><Shirt/></div></aside></div>
+    {activeService && <div className="modal-backdrop" onMouseDown={()=>setActiveService(null)}><section className="wash-modal" role="dialog" aria-modal="true" aria-labelledby="service-modal-title" onMouseDown={event=>event.stopPropagation()}><div className="modal-head"><div><span className="modal-kicker">{activeService.name.toUpperCase()}</span><h2 id="service-modal-title">Select items & quantity</h2><p>Choose each item received from the customer.</p></div><button className="modal-close" onClick={()=>setActiveService(null)} aria-label="Close"><X/></button></div><div className="wash-items">{activeItems.map(item=>{const count=itemCounts[item.name]||0;return <div className={`wash-item ${count ? "selected" : ""}`} key={item.name}><span className="wash-item-icon">{item.icon}</span><span className="wash-item-name"><b>{item.name}</b><small>₹{item.price} each</small></span><div className="wash-counter"><button onClick={()=>setItemCounts(current=>({...current,[item.name]:Math.max(0,count-1)}))} disabled={!count} aria-label={`Remove one ${item.name}`}>−</button><strong>{count}</strong><button onClick={()=>setItemCounts(current=>({...current,[item.name]:count+1}))} aria-label={`Add one ${item.name}`}>+</button></div></div>})}</div><div className="modal-footer"><div><span>{selectedItemCount} {selectedItemCount===1?"item":"items"}</span><b>₹{activeItems.reduce((sum,item)=>sum+(itemCounts[item.name]||0)*item.price,0).toLocaleString("en-IN")}</b></div><button className="secondary" onClick={()=>setActiveService(null)}>Cancel</button><button className="primary" disabled={!selectedItemCount} onClick={addSelectedItems}><Plus size={18}/> Add to invoice</button></div></section></div>}
+  </>;
+}
+function ComingSoon({active, onCreate}:{active:string;onCreate:()=>void}) { return <div className="coming card"><div className="title-icon"><Search/></div><h1>{active}</h1><p>This area is ready for your shop’s live data.</p><button className="primary" onClick={onCreate}>Create New Invoice</button></div>; }
+
+function ServicesAdmin({catalog,setCatalog,notify}:{catalog:ManagedService[];setCatalog:React.Dispatch<React.SetStateAction<ManagedService[]>>;notify:(message:string)=>void}){
+  const [editing,setEditing]=useState<ManagedService|null>(null);const [isNew,setIsNew]=useState(false);
+  const openNew=()=>{setIsNew(true);setEditing({name:"",icon:"🧺",price:0,color:"blue",items:[{name:"",icon:"👕",price:0}]})};
+  const save=async(service:ManagedService)=>{if(!service.name.trim()||service.items.some(item=>!item.name.trim()||item.price<0)){alert("Enter a service name and valid item details.");return}const method=!isNew&&service._id?"PUT":"POST";const url=method==="PUT"?`/api/services/${service._id}`:"/api/services";let saved=service;try{const response=await fetch(url,{method,headers:{"Content-Type":"application/json"},body:JSON.stringify(service)});if(!response.ok)throw new Error();saved=await response.json()}catch{/* Keep admin usable in local demo mode until MongoDB is connected. */}setCatalog(current=>{const original=editing;if(!isNew&&original){return current.map(item=>(original._id&&item._id===original._id)||(!original._id&&item.name===original.name)?saved:item)}return [...current,saved]});setEditing(null);notify(`${service.name} saved successfully.`)};
+  const remove=async(service:ManagedService)=>{if(!confirm(`Delete ${service.name} and all its items?`))return;if(service._id)await fetch(`/api/services/${service._id}`,{method:"DELETE"}).catch(()=>undefined);setCatalog(current=>current.filter(item=>item!==service));notify(`${service.name} removed.`)};
+  return <><div className="page-heading"><div className="title-row"><div className="title-icon"><Shirt/></div><div><h1>Services</h1><p>Manage laundry services, item names and prices.</p></div></div><button className="primary" onClick={openNew}><Plus size={18}/> Add Service</button></div><div className="admin-service-grid">{catalog.map(service=><section className="admin-service card" key={service._id||service.name}><div className={`admin-service-icon ${service.color}`}>{service.icon}</div><div className="admin-service-copy"><h2>{service.name}</h2><p>{service.items.length} billable items</p></div><div className="admin-service-actions"><button onClick={()=>{setIsNew(false);setEditing({...service,items:service.items.map(item=>({...item}))})}} aria-label={`Edit ${service.name}`}><Pencil/></button><button className="danger" onClick={()=>remove(service)} aria-label={`Delete ${service.name}`}><Trash2/></button></div><div className="admin-items">{service.items.map(item=><div key={item.name}><span>{item.icon} {item.name}</span><b>₹{item.price}</b></div>)}</div></section>)}</div>{editing&&<ServiceEditor value={editing} onChange={setEditing} onClose={()=>setEditing(null)} onSave={()=>save(editing)} isNew={isNew}/>}</>;
+}
+
+function ServiceEditor({value,onChange,onClose,onSave,isNew}:{value:ManagedService;onChange:(service:ManagedService)=>void;onClose:()=>void;onSave:()=>void;isNew:boolean}){
+  const updateItem=(index:number,change:Partial<ServiceItem>)=>onChange({...value,items:value.items.map((item,i)=>i===index?{...item,...change}:item)});
+  return <div className="modal-backdrop" onMouseDown={onClose}><section className="service-editor wash-modal" role="dialog" aria-modal="true" onMouseDown={event=>event.stopPropagation()}><div className="modal-head"><div><span className="modal-kicker">ADMIN SERVICES</span><h2>{isNew?"Add laundry service":"Edit laundry service"}</h2><p>Set the category details and billable items.</p></div><button className="modal-close" onClick={onClose}><X/></button></div><div className="editor-body"><div className="editor-service-fields"><label>Service name<input value={value.name} onChange={e=>onChange({...value,name:e.target.value})} placeholder="e.g. Premium Wash"/></label><label>Icon<input value={value.icon} onChange={e=>onChange({...value,icon:e.target.value})} maxLength={4}/></label><label>Card color<select value={value.color} onChange={e=>onChange({...value,color:e.target.value})}>{["blue","violet","mint","sand","rose","cyan","pink","sky","lilac"].map(color=><option key={color}>{color}</option>)}</select></label></div><div className="editor-items-title"><b>Service items</b><button onClick={()=>onChange({...value,items:[...value.items,{name:"",icon:"👕",price:0}]})}><Plus/> Add item</button></div><div className="editor-items">{value.items.map((item,index)=><div className="editor-item" key={index}><input className="item-icon-input" value={item.icon} onChange={e=>updateItem(index,{icon:e.target.value})} aria-label="Item icon"/><input value={item.name} onChange={e=>updateItem(index,{name:e.target.value})} placeholder="Item name"/><label className="price-input"><span>₹</span><input type="number" min="0" value={item.price} onChange={e=>updateItem(index,{price:Number(e.target.value)})}/></label><button className="remove-item" onClick={()=>onChange({...value,items:value.items.filter((_,i)=>i!==index)})} disabled={value.items.length===1}><Trash2/></button></div>)}</div></div><div className="modal-footer"><button className="secondary" onClick={onClose}>Cancel</button><button className="primary" onClick={onSave}>{isNew?"Add service":"Save changes"}</button></div></section></div>;
+}
+
+function Customers({records}:{records:InvoiceRecord[]}){
+  const [query,setQuery]=useState("");
+  const [historyPhone,setHistoryPhone]=useState<string|null>(null);
+  const normalizePhone=(phone:string)=>phone.replace(/\D/g,"").slice(-10)||phone;
+  const customers=useMemo(()=>{const byPhone=new Map<string,{phone:string;name:string;address:string;invoices:number;spent:number;lastVisit:string}>();[...records].sort((a,b)=>new Date(a.createdAt).getTime()-new Date(b.createdAt).getTime()).forEach(record=>{const key=record.customer.phone.replace(/\D/g,"").slice(-10)||record.customer.phone;const current=byPhone.get(key);byPhone.set(key,{phone:record.customer.phone,name:record.customer.name,address:record.customer.address||current?.address||"",invoices:(current?.invoices||0)+1,spent:(current?.spent||0)+(record.paymentStatus!=="Cancelled"?record.total:0),lastVisit:record.createdAt})});return Array.from(byPhone.values()).sort((a,b)=>new Date(b.lastVisit).getTime()-new Date(a.lastVisit).getTime())},[records]);
+  const filtered=customers.filter(customer=>`${customer.phone} ${customer.name}`.toLowerCase().includes(query.toLowerCase()));
+  const selectedCustomer=customers.find(customer=>normalizePhone(customer.phone)===historyPhone);const historyInvoices=records.filter(record=>normalizePhone(record.customer.phone)===historyPhone).sort((a,b)=>new Date(b.createdAt).getTime()-new Date(a.createdAt).getTime());
+  return <><div className="page-heading"><div className="title-row"><div className="title-icon"><Users/></div><div><h1>Customers</h1><p>Customers are uniquely identified and combined by mobile number.</p></div></div></div><section className="customer-directory card"><div className="customer-search"><Search/><input value={query} onChange={event=>setQuery(event.target.value)} placeholder="Search by mobile number or customer name..."/><span>{filtered.length} customers</span></div><div className="customer-records"><div className="customer-row customer-row-head"><span>Customer</span><span>Mobile Number</span><span>Invoices</span><span>Total Spent</span><span>Last Visit</span><span>History</span></div>{filtered.map(customer=><div className="customer-row" key={normalizePhone(customer.phone)}><span className="customer-identity"><i>{customer.name.trim().charAt(0).toUpperCase()||"C"}</i><span><b>{customer.name}</b><small>{customer.address||"No address provided"}</small></span></span><b className="customer-phone">{customer.phone}</b><span><b>{customer.invoices}</b><small>{customer.invoices===1?"invoice":"invoices"}</small></span><b>₹ {customer.spent.toLocaleString("en-IN")}</b><span>{new Date(customer.lastVisit).toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"})}</span><button className="history-button" onClick={()=>setHistoryPhone(normalizePhone(customer.phone))}><History/> View History</button></div>)}{!filtered.length&&<div className="no-results">No customers match that mobile number.</div>}</div></section>{historyPhone&&selectedCustomer&&<div className="modal-backdrop" onMouseDown={()=>setHistoryPhone(null)}><section className="history-modal wash-modal" role="dialog" aria-modal="true" onMouseDown={event=>event.stopPropagation()}><div className="modal-head"><div><span className="modal-kicker">BILLING HISTORY</span><h2>{selectedCustomer.name}</h2><p>{selectedCustomer.phone} · {historyInvoices.length} previous {historyInvoices.length===1?"bill":"bills"}</p></div><button className="modal-close" onClick={()=>setHistoryPhone(null)} aria-label="Close"><X/></button></div><div className="history-list"><div className="history-row history-head"><span>Invoice</span><span>Date</span><span>Payment</span><span>Total</span><span>PDF</span></div>{historyInvoices.map(invoice=><div className="history-row" key={invoice.invoiceNumber}><b>{invoice.invoiceNumber}</b><span>{new Date(invoice.createdAt).toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"})}<small>{new Date(invoice.createdAt).toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit"})}</small></span><i className={`status ${invoice.paymentStatus.toLowerCase()}`}>{invoice.paymentStatus}</i><b>₹ {invoice.total.toLocaleString("en-IN")}</b><button onClick={()=>void downloadInvoicePdf(invoice)} aria-label={`Download ${invoice.invoiceNumber}`}><Download/></button></div>)}</div><div className="history-summary"><span>Lifetime billing</span><b>₹ {selectedCustomer.spent.toLocaleString("en-IN")}</b></div></section></div>}</>;
+}
+
+function Invoices({records,onCreate}:{records:InvoiceRecord[];onCreate:()=>void}){const[query,setQuery]=useState("");const[status,setStatus]=useState("All Status");const filtered=records.filter(r=>(status==="All Status"||r.paymentStatus===status)&&`${r.invoiceNumber} ${r.customer.name} ${r.customer.phone}`.toLowerCase().includes(query.toLowerCase()));return <><div className="page-heading"><div className="title-row"><div className="title-icon"><ReceiptText/></div><div><h1>Invoices</h1><p>View, search and manage all laundry invoices.</p></div></div><button className="primary" onClick={onCreate}><Plus size={18}/> Create New Invoice</button></div><section className="invoice-list card"><div className="filters"><label><Search size={19}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search invoice, customer or phone..."/></label><button className="date-filter"><CalendarDays/> From date</button><label className="status-filter"><Filter size={18}/><select value={status} onChange={e=>setStatus(e.target.value)}><option>All Status</option><option>Paid</option><option>Pending</option><option>Cancelled</option></select></label></div><div className="records"><div className="record record-head"><span>Invoice No.</span><span>Date</span><span>Customer Name</span><span>Total Amount</span><span>Payment Status</span><span>Action</span></div>{filtered.map(r=><div className="record" key={r.invoiceNumber}><span className="invoice-number"><ReceiptText/><span><b>{r.invoiceNumber}</b><small>View Details</small></span></span><span>{new Date(r.createdAt).toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"})}<small>{new Date(r.createdAt).toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit"})}</small></span><span><b>{r.customer.name}</b><small>{r.customer.phone}</small></span><b>₹ {r.total.toLocaleString("en-IN")}</b><span><i className={`status ${r.paymentStatus.toLowerCase()}`}>{r.paymentStatus}</i></span><span className="row-actions"><button aria-label="View invoice"><Eye/></button><button aria-label={`Download ${r.invoiceNumber} PDF`} onClick={()=>void downloadInvoicePdf(r)}><Download/></button><button aria-label="More options"><MoreVertical/></button></span></div>)}{!filtered.length&&<div className="no-results">No matching invoices found.</div>}</div><div className="table-footer">Showing {filtered.length} of {records.length} invoices <span><button>‹</button><button className="current">1</button><button>2</button><button>›</button></span></div></section></>}

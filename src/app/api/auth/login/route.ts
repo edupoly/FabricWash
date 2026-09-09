@@ -1,0 +1,4 @@
+import {NextResponse} from "next/server";
+import {createSessionToken} from "@/lib/auth";
+function safeEqual(left:string,right:string){if(left.length!==right.length)return false;let result=0;for(let index=0;index<left.length;index++)result|=left.charCodeAt(index)^right.charCodeAt(index);return result===0}
+export async function POST(request:Request){const {email,password}=await request.json();if(!safeEqual(String(email||"").toLowerCase(),String(process.env.ADMIN_EMAIL||"").toLowerCase())||!safeEqual(String(password||""),String(process.env.ADMIN_PASSWORD||"")))return NextResponse.json({error:"Invalid email or password"},{status:401});const response=NextResponse.json({success:true});response.cookies.set("fabric_session",await createSessionToken(),{httpOnly:true,secure:process.env.NODE_ENV==="production",sameSite:"lax",path:"/",maxAge:8*60*60});return response}
